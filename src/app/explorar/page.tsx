@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import GroupCard, { GroupCardProps } from "@/components/GroupCard";
 import { CATEGORIES } from "@/lib/categories";
 
 export default function ExplorarPage() {
+  return (
+    <Suspense fallback={<div className="hero-bg min-h-screen flex items-center justify-center"><div className="text-white text-lg">Carregando...</div></div>}>
+      <ExplorarContent />
+    </Suspense>
+  );
+}
+
+function ExplorarContent() {
   const searchParams = useSearchParams();
   const initialCat = searchParams.get("categoria") || "todos";
 
