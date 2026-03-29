@@ -90,7 +90,7 @@ export default function Home() {
             </div>
             <button
               type="submit"
-              className="px-6 sm:px-8 py-4 gradient-bg text-white font-semibold rounded-r-2xl hover:opacity-90 transition-all text-sm sm:text-base whitespace-nowrap"
+              className="px-4 sm:px-8 py-4 gradient-bg text-white font-semibold rounded-r-2xl hover:opacity-90 transition-all text-sm sm:text-base whitespace-nowrap"
             >
               Buscar
             </button>
@@ -164,7 +164,7 @@ export default function Home() {
         <h2 className="text-xl sm:text-2xl font-bold text-center mb-8">
           Explore por <span className="gradient-text">plataforma</span>
         </h2>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-3 stagger-children">
+        <div className="grid grid-cols-2 min-[400px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-3 stagger-children">
           {CATEGORIES.filter(c => c.value !== 'outros').map((cat) => (
             <Link
               key={cat.value}
@@ -259,13 +259,13 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
                 href="/adicionar"
-                className="px-10 py-4 rounded-2xl gradient-bg text-white font-semibold text-lg btn-hover shadow-xl shadow-[var(--color-accent-primary)]/30"
+                className="w-full sm:w-auto px-6 sm:px-10 py-4 rounded-2xl gradient-bg text-white font-semibold text-base sm:text-lg btn-hover shadow-xl shadow-[var(--color-accent-primary)]/30 text-center"
               >
                 ✨ Divulgar Meu Grupo
               </Link>
               <Link
                 href="/explorar"
-                className="px-8 py-4 rounded-2xl glass text-white font-medium hover:bg-white/10 transition-all"
+                className="w-full sm:w-auto px-6 sm:px-8 py-4 rounded-2xl glass text-white font-medium hover:bg-white/10 transition-all text-center"
               >
                 Explorar →
               </Link>

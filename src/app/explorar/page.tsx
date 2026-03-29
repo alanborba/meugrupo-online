@@ -90,10 +90,10 @@ function ExplorarContent() {
         </div>
 
         {/* Category Filters */}
-        <div className="flex flex-wrap justify-center gap-2 mb-10">
+        <div className="flex overflow-x-auto pb-4 gap-2 mb-6 scrollbar-hide snap-x px-1 max-w-full justify-start md:justify-center">
           <button
             onClick={() => setCategory("todos")}
-            className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
+            className={`whitespace-nowrap shrink-0 snap-start px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
               category === "todos"
                 ? "gradient-bg text-white shadow-lg shadow-[var(--color-accent-primary)]/25"
                 : "glass text-[var(--color-text-secondary)] hover:text-white"
@@ -105,7 +105,7 @@ function ExplorarContent() {
             <button
               key={cat.value}
               onClick={() => setCategory(cat.value)}
-              className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
+              className={`whitespace-nowrap shrink-0 snap-start px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
                 category === cat.value
                   ? "text-white shadow-lg"
                   : "glass text-[var(--color-text-secondary)] hover:text-white"
