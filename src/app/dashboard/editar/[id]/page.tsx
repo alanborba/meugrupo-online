@@ -1,0 +1,309 @@
+"use client";
+
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { useAuth } from "@/components/AuthProvider";
+import { CATEGORIES } from "@/lib/categories";
+
+export default function EditarGrupoPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const params = useParams();
+  const groupId = params.id as string;
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [form, setForm] = useState({
+    name: "",
+    description: "",
+    link: "",
+    category: "",
+    image_url: "",
+    tags: "",
+  });
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login");
+      return;
+    }
+
+    if (user && groupId) {
+      fetch(`/api/groups/${groupId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.user_id && data.user_id !== user.id) {
+            router.push("/dashboard");
+            return;
+          }
+          setForm({
+            name: data.name || "",
+            description: data.description || "",
+            link: data.link || "",
+            category: data.category || "",
+            image_url: data.image_url || "",
+            tags: (data.tags || []).join(", "),
+          });
+          if (data.image_url) setImagePreview(data.image_url);
+          setLoading(false);
+        })
+        .catch(() => router.push("/dashboard"));
+    }
+  }, [user, authLoading, groupId, router]);
+
+  const handleImageSelect = useCallback((file: File) => {
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+      setErrors((prev) => ({ ...prev, image: "Formato inválido." }));
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors((prev) => ({ ...prev, image: "Máximo 5MB." }));
+      return;
+    }
+    setErrors((prev) => { const { image, ...rest } = prev; return rest; });
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => setImagePreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleImageSelect(file);
+  }, [handleImageSelect]);
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setForm({ ...form, image_url: "" });
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!form.name.trim()) e.name = "Nome é obrigatório";
+    if (!form.description.trim()) e.description = "Descrição é obrigatória";
+    if (!form.link.trim()) e.link = "Link é obrigatório";
+    if (!form.category) e.category = "Selecione uma categoria";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setSaving(true);
+
+    try {
+      let imageUrl = form.image_url;
+
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append("file", imageFile);
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          imageUrl = uploadData.url;
+        }
+      }
+
+      const res = await fetch(`/api/groups/${groupId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update",
+          name: form.name,
+          description: form.description,
+          link: form.link,
+          category: form.category.toLowerCase(),
+          image_url: imageUrl,
+          tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        }),
+      });
+
+      if (res.ok) {
+        router.push("/dashboard");
+      }
+    } catch {
+      alert("Erro ao salvar. Tente novamente.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (authLoading || loading) {
+    return (
+      <div className="hero-bg min-h-screen flex items-center justify-center">
+        <div className="text-white text-lg">Carregando...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="hero-bg min-h-screen">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="flex items-center gap-4 mb-8">
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="px-4 py-2 rounded-xl glass text-sm text-[var(--color-text-secondary)] hover:text-white transition-colors"
+          >
+            ← Voltar
+          </button>
+          <h1 className="text-2xl font-bold text-white">
+            Editar <span className="gradient-text">Grupo</span>
+          </h1>
+        </div>
+
+        <form onSubmit={handleSubmit} className="glass rounded-2xl p-8 space-y-6">
+          {/* Name */}
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">Nome do Grupo *</label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="w-full bg-white/5 border border-[var(--color-border)] rounded-xl px-4 py-3 text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-primary)] transition-colors text-sm"
+            />
+            {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">Descrição *</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows={4}
+              className="w-full bg-white/5 border border-[var(--color-border)] rounded-xl px-4 py-3 text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-primary)] transition-colors text-sm resize-none"
+            />
+            {errors.description && <p className="text-red-400 text-xs mt-1">{errors.description}</p>}
+          </div>
+
+          {/* Link */}
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">Link do Grupo *</label>
+            <input
+              type="url"
+              value={form.link}
+              onChange={(e) => setForm({ ...form, link: e.target.value })}
+              className="w-full bg-white/5 border border-[var(--color-border)] rounded-xl px-4 py-3 text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-primary)] transition-colors text-sm"
+            />
+            {errors.link && <p className="text-red-400 text-xs mt-1">{errors.link}</p>}
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">Categoria *</label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => setForm({ ...form, category: cat.value })}
+                  className={`px-4 py-3 rounded-xl text-sm font-medium transition-all border ${
+                    form.category === cat.value
+                      ? "text-white border-transparent shadow-lg"
+                      : "bg-white/5 border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-hover)]"
+                  }`}
+                  style={
+                    form.category === cat.value
+                      ? { background: cat.color, boxShadow: `0 8px 25px ${cat.color}40` }
+                      : undefined
+                  }
+                >
+                  {cat.icon} {cat.label}
+                </button>
+              ))}
+            </div>
+            {errors.category && <p className="text-red-400 text-xs mt-2">{errors.category}</p>}
+          </div>
+
+          {/* Image */}
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">
+              Imagem <span className="text-[var(--color-text-muted)]">(opcional)</span>
+            </label>
+            {imagePreview ? (
+              <div className="relative rounded-xl overflow-hidden border border-[var(--color-border)]">
+                <img src={imagePreview} alt="Preview" className="w-full h-48 object-cover" />
+                <button
+                  type="button"
+                  onClick={removeImage}
+                  className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-red-500 text-white flex items-center justify-center transition-colors text-sm font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <div
+                onDrop={handleDrop}
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+                onClick={() => fileInputRef.current?.click()}
+                className={`w-full h-48 rounded-xl border-2 border-dashed cursor-pointer transition-all flex flex-col items-center justify-center gap-3 ${
+                  isDragging
+                    ? "border-[var(--color-accent-primary)] bg-[var(--color-accent-primary)]/10"
+                    : "border-[var(--color-border)] bg-white/5 hover:border-[var(--color-border-hover)]"
+                }`}
+              >
+                <div className="text-4xl">📷</div>
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  <span className="text-[var(--color-accent-secondary)] font-medium">Clique para enviar</span> ou arraste
+                </p>
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleImageSelect(file);
+              }}
+            />
+          </div>
+
+          {/* Tags */}
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">Tags <span className="text-[var(--color-text-muted)]">(separadas por vírgula)</span></label>
+            <input
+              type="text"
+              value={form.tags}
+              onChange={(e) => setForm({ ...form, tags: e.target.value })}
+              placeholder="marketing, digital, seo"
+              className="w-full bg-white/5 border border-[var(--color-border)] rounded-xl px-4 py-3 text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-primary)] transition-colors text-sm"
+            />
+          </div>
+
+          {/* Buttons */}
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard")}
+              className="flex-1 py-3 rounded-xl glass text-[var(--color-text-secondary)] font-medium hover:bg-white/10 transition-all text-sm"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 py-3 rounded-xl gradient-bg text-white font-semibold hover:opacity-90 transition-all shadow-lg shadow-[var(--color-accent-primary)]/30 disabled:opacity-50 text-sm"
+            >
+              {saving ? "Salvando..." : "💾 Salvar Alterações"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

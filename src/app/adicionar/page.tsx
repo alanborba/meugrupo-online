@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { CATEGORIES } from "@/lib/categories";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function AdicionarPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -107,6 +110,7 @@ export default function AdicionarPage() {
         body: JSON.stringify({
           ...form,
           image_url: imageUrl,
+          user_id: user?.id,
           tags: form.tags
             .split(",")
             .map((t) => t.trim())
@@ -124,6 +128,36 @@ export default function AdicionarPage() {
       setLoading(false);
     }
   };
+
+  if (!authLoading && !user) {
+    return (
+      <div className="hero-bg min-h-screen flex items-center justify-center px-4">
+        <div className="glass rounded-3xl p-12 text-center max-w-md w-full">
+          <span className="text-6xl block mb-6">🔐</span>
+          <h2 className="text-2xl font-bold text-white mb-3">
+            Faça login para continuar
+          </h2>
+          <p className="text-[var(--color-text-muted)] text-sm mb-8">
+            Você precisa estar logado para adicionar grupos à plataforma
+          </p>
+          <div className="flex flex-col gap-3">
+            <Link
+              href="/login"
+              className="px-8 py-4 rounded-xl gradient-bg text-white font-semibold hover:opacity-90 transition-all shadow-lg shadow-[var(--color-accent-primary)]/30"
+            >
+              Entrar na minha conta
+            </Link>
+            <Link
+              href="/cadastro"
+              className="px-8 py-3 rounded-xl glass text-white font-medium hover:bg-white/10 transition-all"
+            >
+              Criar conta grátis →
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (success) {
     return (

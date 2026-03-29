@@ -5,6 +5,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get("category") || undefined;
   const search = searchParams.get("search") || undefined;
+  const userId = searchParams.get("user_id") || undefined;
   const page = Number(searchParams.get("page")) || 1;
   const limit = Number(searchParams.get("limit")) || 12;
   const offset = (page - 1) * limit;
@@ -20,6 +21,10 @@ export async function GET(request: NextRequest) {
   // Build query
   let query = supabase.from("groups").select("*", { count: "exact" });
 
+  if (userId) {
+    query = query.eq("user_id", userId);
+  }
+
   if (category && category !== "todos") {
     query = query.ilike("category", category);
   }
@@ -30,7 +35,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Order: promoted first (premium > plus > basic), then by clicks
+  // Order: promoted first, then by clicks
   query = query
     .order("is_promoted", { ascending: false })
     .order("clicks", { ascending: false })
@@ -51,7 +56,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, description, link, category, image_url, tags } = body;
+    const { name, description, link, category, image_url, tags, user_id } = body;
 
     if (!name || !description || !link || !category) {
       return NextResponse.json(
@@ -60,18 +65,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const insertData: Record<string, unknown> = {
+      name,
+      description,
+      link,
+      category: category.toLowerCase(),
+      image_url: image_url || "",
+      tags: tags || [],
+      clicks: 0,
+      is_promoted: false,
+    };
+
+    if (user_id) {
+      insertData.user_id = user_id;
+    }
+
     const { data, error } = await supabase
       .from("groups")
-      .insert({
-        name,
-        description,
-        link,
-        category: category.toLowerCase(),
-        image_url: image_url || "",
-        tags: tags || [],
-        clicks: 0,
-        is_promoted: false,
-      })
+      .insert(insertData)
       .select()
       .single();
 

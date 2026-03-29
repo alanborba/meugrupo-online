@@ -28,7 +28,6 @@ export async function PATCH(
   const body = await request.json();
 
   if (body.action === "click") {
-    // Increment clicks using RPC or update
     const { data: group } = await supabase
       .from("groups")
       .select("clicks")
@@ -73,5 +72,47 @@ export async function PATCH(
     return NextResponse.json(data);
   }
 
+  // Update group details
+  if (body.action === "update") {
+    const updateData: Record<string, unknown> = {};
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.link !== undefined) updateData.link = body.link;
+    if (body.category !== undefined) updateData.category = body.category;
+    if (body.image_url !== undefined) updateData.image_url = body.image_url;
+    if (body.tags !== undefined) updateData.tags = body.tags;
+
+    const { data, error } = await supabase
+      .from("groups")
+      .update(updateData)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error || !data) {
+      return NextResponse.json({ error: "Erro ao atualizar grupo" }, { status: 500 });
+    }
+
+    return NextResponse.json(data);
+  }
+
   return NextResponse.json({ error: "Ação inválida" }, { status: 400 });
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+
+  const { error } = await supabase
+    .from("groups")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    return NextResponse.json({ error: "Erro ao excluir grupo" }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
 }
