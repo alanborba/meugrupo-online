@@ -96,7 +96,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${inter.variable} ${outfit.variable} antialiased min-h-screen flex flex-col`}
+        className={`${inter.variable} ${outfit.variable} antialiased min-h-screen flex flex-col overflow-x-hidden`}
       >
         <AuthProvider>
           <Header />
