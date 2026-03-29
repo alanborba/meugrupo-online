@@ -14,6 +14,10 @@ export default function PromoverPage() {
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  const [qrCode64, setQrCode64] = useState<string | null>(null);
+  const [qrCodeLink, setQrCodeLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     if (!params.id) return;
     fetch(`/api/groups/${params.id}`)
@@ -30,24 +34,39 @@ export default function PromoverPage() {
       });
   }, [params.id]);
 
-  const handlePromote = async () => {
+  const handleGeneratePix = async () => {
     if (!selectedPlan || !group) return;
     setProcessing(true);
 
-    // Simulate payment (in production, integrate Mercado Pago PIX)
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      const res = await fetch('/api/payments', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groupId: group.id, planId: selectedPlan }),
+      });
 
-    // Activate promotion
-    const res = await fetch(`/api/groups/${group.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "promote", plan: selectedPlan }),
-    });
-
-    if (res.ok) {
-      setSuccess(true);
+      const data = await res.json();
+      
+      if (data.qr_code_base64) {
+        setQrCode64(data.qr_code_base64);
+        setQrCodeLink(data.qr_code);
+      } else {
+        alert(data.error || "Erro. Verifique a chave MERCADOPAGO_ACCESS_TOKEN nas variáveis de ambiente.");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Falha na geração do PIX. Tente novamente.");
+    } finally {
+      setProcessing(false);
     }
-    setProcessing(false);
+  };
+
+  const handleCopy = () => {
+    if (qrCodeLink) {
+      navigator.clipboard.writeText(qrCodeLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   if (loading) {
@@ -116,8 +135,7 @@ export default function PromoverPage() {
             Promover <span className="gradient-text-pink">{group.name}</span>
           </h1>
           <p className="text-[var(--color-text-muted)] text-sm max-w-lg mx-auto">
-            Escolha um plano para impulsionar seu grupo ao topo da listagem e
-            atrair mais membros!
+            Escolha um plano para impulsionar seu grupo ao topo da listagem e atrair mais membros!
           </p>
         </div>
 
@@ -130,7 +148,11 @@ export default function PromoverPage() {
             return (
               <button
                 key={plan.id}
-                onClick={() => setSelectedPlan(plan.id)}
+                onClick={() => {
+                  setSelectedPlan(plan.id);
+                  setQrCode64(null);
+                  setQrCodeLink(null);
+                }}
                 className={`relative glass rounded-2xl p-8 text-left transition-all hover:scale-[1.03] ${
                   isSelected
                     ? "border-2 border-[var(--color-accent-primary)] shadow-2xl scale-[1.03]"
@@ -188,57 +210,93 @@ export default function PromoverPage() {
           })}
         </div>
 
-        {/* Payment */}
+        {/* Payment Area */}
         {selectedPlan && (
           <div className="max-w-md mx-auto animate-count-up">
-            <div className="glass rounded-2xl p-8 text-center">
-              <h3 className="text-lg font-semibold text-white mb-2">
-                Confirmar Promoção
-              </h3>
-              <p className="text-[var(--color-text-muted)] text-sm mb-2">
-                Plano:{" "}
-                <span className="text-white font-medium">
-                  {PLANS.find((p) => p.id === selectedPlan)?.name}
-                </span>
-              </p>
+            <div className="glass rounded-2xl p-8 text-center border-t-4 border-[var(--color-accent-primary)]">
+              <h3 className="text-lg font-bold text-white mb-1">Pagar via PIX</h3>
               <p className="text-[var(--color-text-muted)] text-sm mb-6">
-                Valor:{" "}
-                <span className="text-white font-medium">
-                  R${PLANS.find((p) => p.id === selectedPlan)?.price},00
-                </span>
+                Plano: <strong className="text-white">{PLANS.find((p) => p.id === selectedPlan)?.name}</strong> — 
+                R${PLANS.find((p) => p.id === selectedPlan)?.price},00
               </p>
 
-              <div className="glass rounded-xl p-6 mb-6">
-                <div className="w-40 h-40 mx-auto bg-white rounded-lg flex items-center justify-center mb-3">
-                  <div className="text-center text-gray-400">
-                    <svg className="w-12 h-12 mx-auto mb-1 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                    </svg>
-                    <span className="text-xs">QR Code PIX</span>
-                  </div>
+              <div className="glass rounded-xl p-5 mb-6">
+                <div className="w-48 h-48 mx-auto bg-white rounded-xl flex items-center justify-center p-2 mb-4 overflow-hidden shadow-inner">
+                  {qrCode64 ? (
+                    <img src={`data:image/jpeg;base64,${qrCode64}`} alt="QR Code PIX" className="w-full h-full object-contain" />
+                  ) : (
+                    <div className="text-gray-400 text-center">
+                      <svg className="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                      </svg>
+                      <span className="text-xs uppercase font-bold tracking-widest block opacity-70">Aguardando...</span>
+                    </div>
+                  )}
                 </div>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  💡 Integração com Mercado Pago PIX será ativada em produção
-                </p>
+
+                {qrCodeLink ? (
+                  <div className="animate-fade-in-scale">
+                    <p className="text-xs text-[var(--color-text-muted)] mb-2 font-medium">PIX Copia e Cola:</p>
+                    <div className="flex bg-black/40 border border-[var(--color-border)] rounded-xl overflow-hidden focus-within:border-[var(--color-accent-primary)] transition-colors">
+                      <input 
+                        type="text" 
+                        readOnly 
+                        value={qrCodeLink} 
+                        className="flex-1 bg-transparent px-3 py-3 text-xs text-[var(--color-text-secondary)] font-mono outline-none" 
+                        onClick={(e) => e.currentTarget.select()}
+                      />
+                      <button 
+                        onClick={handleCopy} 
+                        className="px-4 gradient-bg text-xs font-bold text-white shrink-0 hover:opacity-90 transition-opacity flex items-center gap-1"
+                      >
+                        {copied ? '✓ Copiado' : 'Copiar'}
+                      </button>
+                    </div>
+                    <div className="mt-5 text-center">
+                      <p className="text-xs text-[var(--color-accent-green)] font-semibold flex items-center justify-center gap-2">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-accent-green)] opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-accent-green)]"></span>
+                        </span>
+                        Aguardando pagamento...
+                      </p>
+                      
+                      {/* Botão temporário para aprovar visualmente e finalizar o UX */}
+                      <button 
+                        onClick={() => setSuccess(true)} 
+                        className="mt-6 text-[10px] text-[var(--color-text-muted)] underline hover:text-[var(--color-text-primary)] transition-colors"
+                        title="Isso é pra você testar o fluxo sem precisar pagar, mas em Produção, seria automático via Webhook."
+                      >
+                        Simular pagamento automático (Dev Mode)
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-[var(--color-text-muted)]">
+                    Abra o app do seu banco e escaneie o código que será gerado.
+                  </p>
+                )}
               </div>
 
-              <button
-                onClick={handlePromote}
-                disabled={processing}
-                className="w-full py-4 rounded-xl gradient-bg text-white font-semibold text-lg hover:opacity-90 transition-all shadow-lg shadow-[var(--color-accent-primary)]/30 disabled:opacity-50"
-              >
-                {processing ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Processando...
-                  </span>
-                ) : (
-                  "Confirmar e Pagar"
-                )}
-              </button>
+              {!qrCodeLink && (
+                <button
+                  onClick={handleGeneratePix}
+                  disabled={processing}
+                  className="w-full py-4 rounded-xl gradient-bg text-white font-semibold text-lg hover:opacity-90 transition-all shadow-lg shadow-[var(--color-accent-primary)]/30 disabled:opacity-50"
+                >
+                  {processing ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Gerando PIX...
+                    </span>
+                  ) : (
+                    "Gerar Pagamento"
+                  )}
+                </button>
+              )}
             </div>
           </div>
         )}
