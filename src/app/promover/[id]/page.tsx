@@ -46,7 +46,7 @@ export default function PromoverPage() {
       });
 
       const data = await res.json();
-      
+
       if (data.qr_code_base64) {
         setQrCode64(data.qr_code_base64);
         setQrCodeLink(data.qr_code);
@@ -153,11 +153,10 @@ export default function PromoverPage() {
                   setQrCode64(null);
                   setQrCodeLink(null);
                 }}
-                className={`relative glass rounded-2xl p-8 text-left transition-all hover:scale-[1.03] ${
-                  isSelected
+                className={`relative glass rounded-2xl p-8 text-left transition-all hover:scale-[1.03] ${isSelected
                     ? "border-2 border-[var(--color-accent-primary)] shadow-2xl scale-[1.03]"
                     : ""
-                } ${isPopular ? "md:-translate-y-4" : ""}`}
+                  } ${isPopular ? "md:-translate-y-4" : ""}`}
               >
                 {isPopular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -197,11 +196,10 @@ export default function PromoverPage() {
                 </ul>
 
                 <div
-                  className={`w-full py-3 rounded-xl text-center text-sm font-semibold transition-all ${
-                    isSelected
+                  className={`w-full py-3 rounded-xl text-center text-sm font-semibold transition-all ${isSelected
                       ? "gradient-bg text-white shadow-lg"
                       : "bg-white/5 text-[var(--color-text-secondary)] border border-[var(--color-border)]"
-                  }`}
+                    }`}
                 >
                   {isSelected ? "✓ Selecionado" : "Selecionar"}
                 </div>
@@ -216,7 +214,7 @@ export default function PromoverPage() {
             <div className="glass rounded-2xl p-8 text-center border-t-4 border-[var(--color-accent-primary)]">
               <h3 className="text-lg font-bold text-white mb-1">Pagar via PIX</h3>
               <p className="text-[var(--color-text-muted)] text-sm mb-6">
-                Plano: <strong className="text-white">{PLANS.find((p) => p.id === selectedPlan)?.name}</strong> — 
+                Plano: <strong className="text-white">{PLANS.find((p) => p.id === selectedPlan)?.name}</strong> —
                 R${PLANS.find((p) => p.id === selectedPlan)?.price},00
               </p>
 
@@ -238,15 +236,15 @@ export default function PromoverPage() {
                   <div className="animate-fade-in-scale">
                     <p className="text-xs text-[var(--color-text-muted)] mb-2 font-medium">PIX Copia e Cola:</p>
                     <div className="flex bg-black/40 border border-[var(--color-border)] rounded-xl overflow-hidden focus-within:border-[var(--color-accent-primary)] transition-colors">
-                      <input 
-                        type="text" 
-                        readOnly 
-                        value={qrCodeLink} 
-                        className="flex-1 bg-transparent px-3 py-3 text-xs text-[var(--color-text-secondary)] font-mono outline-none" 
+                      <input
+                        type="text"
+                        readOnly
+                        value={qrCodeLink}
+                        className="flex-1 bg-transparent px-3 py-3 text-xs text-[var(--color-text-secondary)] font-mono outline-none"
                         onClick={(e) => e.currentTarget.select()}
                       />
-                      <button 
-                        onClick={handleCopy} 
+                      <button
+                        onClick={handleCopy}
                         className="px-4 gradient-bg text-xs font-bold text-white shrink-0 hover:opacity-90 transition-opacity flex items-center gap-1"
                       >
                         {copied ? '✓ Copiado' : 'Copiar'}
@@ -260,10 +258,10 @@ export default function PromoverPage() {
                         </span>
                         Aguardando pagamento...
                       </p>
-                      
+
                       {/* Botão temporário para aprovar visualmente e finalizar o UX */}
-                      <button 
-                        onClick={() => setSuccess(true)} 
+                      <button
+                        onClick={() => setSuccess(true)}
                         className="mt-6 text-[10px] text-[var(--color-text-muted)] underline hover:text-[var(--color-text-primary)] transition-colors"
                         title="Isso é pra você testar o fluxo sem precisar pagar, mas em Produção, seria automático via Webhook."
                       >
